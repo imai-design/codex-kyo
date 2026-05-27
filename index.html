@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex教 | OpenAI / Codexニュースを日本語で実装まで届ける</title>
+  <meta name="description" content="Codex教は、OpenAI / ChatGPT / Codex の公式ニュースを日本語でわかりやすく解説し、Codexで試せる形まで落とす非公式メディア兼コミュニティです。">
+  <meta property="og:title" content="Codex教">
+  <meta property="og:description" content="読んで終わりではない。Codexで作って前へ進める。">
+  <meta property="og:image" content="assets/codex-kyo-hero.png">
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #101214;
+      --panel: #171b1f;
+      --line: rgba(255, 255, 255, .14);
+      --text: #f6f2ea;
+      --muted: #b9c0bf;
+      --cyan: #67e8f9;
+      --mint: #6ee7b7;
+      --amber: #f7b955;
+      --coral: #ff7a66;
+      --paper: #f3ead8;
+      --paper-ink: #1d1b18;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .38);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif;
+      background: var(--ink);
+      color: var(--text);
+      line-height: 1.7;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+    }
+
+    .nav {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px max(18px, calc((100vw - 1180px) / 2));
+      border-bottom: 1px solid rgba(255, 255, 255, .10);
+      background: rgba(16, 18, 20, .78);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 800;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(103, 232, 249, .45);
+      background: #10181a;
+      color: var(--cyan);
+      font-weight: 900;
+      border-radius: 6px;
+      box-shadow: 0 0 24px rgba(103, 232, 249, .14);
+      flex: 0 0 auto;
+    }
+
+    .links {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .links a {
+      padding: 8px 10px;
+      border-radius: 6px;
+    }
+
+    .links a:hover {
+      background: rgba(255, 255, 255, .08);
+      color: var(--text);
+    }
+
+    .hero {
+      min-height: 92vh;
+      display: grid;
+      align-items: end;
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      padding: 112px 0 42px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background-image: url("assets/codex-kyo-hero.png");
+      background-size: cover;
+      background-position: center;
+      transform: scale(1.02);
+      filter: saturate(.96) contrast(1.06);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background:
+        linear-gradient(90deg, rgba(16, 18, 20, .94) 0%, rgba(16, 18, 20, .76) 38%, rgba(16, 18, 20, .38) 72%, rgba(16, 18, 20, .76) 100%),
+        linear-gradient(0deg, rgba(16, 18, 20, .98) 0%, rgba(16, 18, 20, .32) 42%, rgba(16, 18, 20, .84) 100%);
+    }
+
+    .wrap {
+      width: min(1180px, calc(100% - 36px));
+      margin: 0 auto;
+    }
+
+    .hero-copy {
+      width: 100%;
+      max-width: 760px;
+      padding-bottom: 22px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--cyan);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 18px 0 16px;
+      font-size: clamp(56px, 8vw, 112px);
+      line-height: .92;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 700px;
+      margin: 0 0 26px;
+      color: #e9eee9;
+      font-size: 19px;
+      overflow-wrap: anywhere;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: 800;
+      border: 1px solid rgba(255, 255, 255, .18);
+      background: rgba(255, 255, 255, .08);
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+
+    .btn.primary {
+      background: var(--paper);
+      color: var(--paper-ink);
+      border-color: transparent;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      margin-top: 34px;
+      border: 1px solid var(--line);
+      background: var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .stat {
+      min-height: 96px;
+      padding: 16px;
+      background: rgba(16, 18, 20, .72);
+    }
+
+    .stat strong {
+      display: block;
+      color: var(--text);
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    section {
+      padding: 76px 0;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, .85fr) minmax(280px, .45fr);
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      margin: 8px 0 0;
+      font-size: 42px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 20px;
+      min-height: 218px;
+    }
+
+    .card h3 {
+      margin: 12px 0 10px;
+      line-height: 1.25;
+      font-size: 20px;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 8px;
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .news-band {
+      background: var(--paper);
+      color: var(--paper-ink);
+    }
+
+    .news-band .eyebrow,
+    .news-band .tag {
+      color: #0f6f78;
+    }
+
+    .news-band .section-head p,
+    .news-band .news-meta,
+    .news-band .news-card p {
+      color: #5c554c;
+    }
+
+    .news-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .news-card {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding: 18px;
+      border: 1px solid rgba(29, 27, 24, .18);
+      background: rgba(255, 255, 255, .46);
+      border-radius: 8px;
+    }
+
+    .news-date {
+      font-weight: 900;
+      color: #0f6f78;
+    }
+
+    .news-card h3 {
+      margin: 0 0 4px;
+      font-size: 20px;
+      line-height: 1.25;
+    }
+
+    .news-card p {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .source {
+      color: #1b5f66;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1px;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+
+    .step {
+      min-height: 180px;
+      background: #121619;
+      padding: 18px;
+    }
+
+    .step b {
+      color: var(--amber);
+      font-size: 13px;
+    }
+
+    .step h3 {
+      margin: 12px 0 8px;
+      font-size: 19px;
+      line-height: 1.25;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, .9fr) minmax(300px, .55fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .manifesto {
+      border: 1px solid rgba(103, 232, 249, .22);
+      background: #11181b;
+      border-radius: 8px;
+      padding: 28px;
+    }
+
+    .manifesto p {
+      margin: 0 0 16px;
+      color: #d7ddda;
+      font-size: 17px;
+    }
+
+    .manifesto p:last-child {
+      margin-bottom: 0;
+    }
+
+    .tiers {
+      display: grid;
+      gap: 12px;
+    }
+
+    .tier {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: var(--panel);
+    }
+
+    .tier h3 {
+      margin: 0;
+    }
+
+    .tier p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .footer {
+      padding: 36px 0 54px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .footer .wrap {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 900px) {
+      .links {
+        display: none;
+      }
+
+      .hero {
+        min-height: 86vh;
+      }
+
+      .lead {
+        font-size: 17px;
+      }
+
+      .stats,
+      .grid,
+      .flow,
+      .split,
+      .section-head {
+        grid-template-columns: 1fr;
+      }
+
+      .news-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .wrap {
+        width: min(calc(100% - 28px), 362px);
+        margin-left: 14px;
+        margin-right: auto;
+      }
+
+      h1 {
+        font-size: 52px;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+      }
+
+      h2 {
+        font-size: 34px;
+      }
+
+      section {
+        padding: 58px 0;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+      }
+
+      .hero-copy,
+      .lead {
+        max-width: 100%;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav" aria-label="サイトナビゲーション">
+    <a class="brand" href="#top" aria-label="Codex教 ホーム">
+      <span class="mark">C</span>
+      <span>Codex教</span>
+    </a>
+    <nav class="links" aria-label="ページ内リンク">
+      <a href="#doctrine">教義</a>
+      <a href="#news">公式ニュース</a>
+      <a href="#ops">運用</a>
+      <a href="#membership">会員</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap">
+        <div class="hero-copy">
+          <div class="eyebrow">Unofficial Japanese Codex Media</div>
+          <h1>Codex教</h1>
+          <p class="lead">読んで終わりではない。OpenAIとCodexの公式ニュースを日本語で噛み砕き、今日の作業・実装・発信まで落とす。</p>
+          <div class="actions">
+            <a class="btn primary" href="#news">最新の公式ニュースを見る</a>
+            <a class="btn" href="#membership">会員導線を見る</a>
+          </div>
+        </div>
+        <div class="stats" aria-label="Codex教の初期方針">
+          <div class="stat"><strong>公式源</strong><span>OpenAI公式・Docs・Help Centerを優先</span></div>
+          <div class="stat"><strong>日本語</strong><span>速報よりも理解と実用を重視</span></div>
+          <div class="stat"><strong>実装</strong><span>Codexで試せる一手まで落とす</span></div>
+          <div class="stat"><strong>非公式</strong><span>OpenAI公式に見せない運用</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="doctrine">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Doctrine</div>
+            <h2>Codex教の五箇条</h2>
+          </div>
+          <p>Claude教と対になるOpenAI/Codex文化圏。信じるより、作って証明する。</p>
+        </div>
+        <div class="grid">
+          <article class="card">
+            <span class="tag">壱</span>
+            <h3>公式源を読む</h3>
+            <p>一次ソース、日付、対象プラン、制限事項を残す。噂は噂として扱う。</p>
+          </article>
+          <article class="card">
+            <span class="tag">弐</span>
+            <h3>日本語へ変換する</h3>
+            <p>直訳で止めない。何が変わったか、誰に効くか、どう使うかに分解する。</p>
+          </article>
+          <article class="card">
+            <span class="tag">参</span>
+            <h3>Codexで試す</h3>
+            <p>記事の最後に、Codexで試せるプロンプト、実装例、検証観点を置く。</p>
+          </article>
+          <article class="card">
+            <span class="tag">四</span>
+            <h3>安全に作る</h3>
+            <p>サンドボックス、承認、ログ、ネットワーク制御を前提に、作業を増やす。</p>
+          </article>
+          <article class="card">
+            <span class="tag">伍</span>
+            <h3>会員を育てる</h3>
+            <p>ニュース読者を、実際に作れる人へ。テンプレ、講座、実装パックへ繋ぐ。</p>
+          </article>
+          <article class="card">
+            <span class="tag">裏方</span>
+            <h3>Codex卿が構築する</h3>
+            <p>LP、記事化、SNS原稿、会員導線、ニュース運用をCodexで積み上げる。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="news" class="news-band">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Official Sources</div>
+            <h2>2026-05-27時点の初回ニュース束</h2>
+          </div>
+          <p>OpenAI公式サイト、Platform Docs、Help CenterからCodex関連の重要更新を抽出。</p>
+        </div>
+        <div class="news-list">
+          <article class="news-card">
+            <div class="news-date">2026-05-21</div>
+            <div>
+              <h3>CodexにAppshots、Goal mode、ブラウザ改善、ロック中のリモート利用が追加</h3>
+              <p>長い作業を止めずに進めるための文脈取り込みと遠隔継続が強化された。</p>
+            </div>
+            <a class="source" href="https://help.openai.com/en/articles/6825453-chatgpt-release-notes" target="_blank" rel="noreferrer">OpenAI Help</a>
+          </article>
+          <article class="news-card">
+            <div class="news-date">2026-05-14</div>
+            <div>
+              <h3>ChatGPTモバイルアプリからCodexへリモートアクセス</h3>
+              <p>外出中でもスレッド継続、承認、方向転換、結果レビューができる流れへ。</p>
+            </div>
+            <a class="source" href="https://help.openai.com/en/articles/6825453-chatgpt-release-notes" target="_blank" rel="noreferrer">OpenAI Help</a>
+          </article>
+          <article class="news-card">
+            <div class="news-date">2026-05-13</div>
+            <div>
+              <h3>Windows向けCodexサンドボックスの設計解説</h3>
+              <p>Windowsでも安全にCodexを使うため、専用ユーザー、制限トークン、Firewallを組み合わせた。</p>
+            </div>
+            <a class="source" href="https://openai.com/index/building-codex-windows-sandbox/" target="_blank" rel="noreferrer">OpenAI</a>
+          </article>
+          <article class="news-card">
+            <div class="news-date">2026-05-08</div>
+            <div>
+              <h3>OpenAI社内におけるCodexの安全運用</h3>
+              <p>サンドボックス、承認、ネットワークポリシー、OpenTelemetryログの重要性がまとまった。</p>
+            </div>
+            <a class="source" href="https://openai.com/index/running-codex-safely/" target="_blank" rel="noreferrer">OpenAI</a>
+          </article>
+          <article class="news-card">
+            <div class="news-date">2026-04-16</div>
+            <div>
+              <h3>Codex for almost everything</h3>
+              <p>コードを書く道具から、PC操作・画像生成・記憶・継続タスクまで担う作業相棒へ広がった。</p>
+            </div>
+            <a class="source" href="https://openai.com/index/codex-for-almost-everything/" target="_blank" rel="noreferrer">OpenAI</a>
+          </article>
+          <article class="news-card">
+            <div class="news-date">2026-02-02</div>
+            <div>
+              <h3>Codex app登場</h3>
+              <p>複数エージェントを並列に管理するコマンドセンターとして、Codex appが発表された。</p>
+            </div>
+            <a class="source" href="https://openai.com/index/introducing-the-codex-app/" target="_blank" rel="noreferrer">OpenAI</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="ops">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Publishing Engine</div>
+            <h2>Codexで回すニュース発信ライン</h2>
+          </div>
+          <p>読む、要約する、記事にする、SNSへ展開する、会員向けに実装パック化する。</p>
+        </div>
+        <div class="flow">
+          <div class="step"><b>Step 1</b><h3>公式確認</h3><p>OpenAI公式、Platform Docs、Help Centerを確認。日付とURLを保存。</p></div>
+          <div class="step"><b>Step 2</b><h3>日本語要約</h3><p>3行まとめ、対象者、使いどころ、注意点へ分解。</p></div>
+          <div class="step"><b>Step 3</b><h3>記事化</h3><p>Markdownで保存し、LPまたはニュース一覧へ反映。</p></div>
+          <div class="step"><b>Step 4</b><h3>SNS展開</h3><p>Xスレッド、note見出し、メルマガ冒頭を同時生成。</p></div>
+          <div class="step"><b>Step 5</b><h3>会員化</h3><p>Codexで試すプロンプト、テンプレ、実装例を追加する。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="membership">
+      <div class="wrap split">
+        <div class="manifesto">
+          <div class="eyebrow">Community</div>
+          <h2>読む人を、作る人へ。</h2>
+          <p>Codex教の役目は、OpenAIニュースの翻訳だけではない。新機能を見た瞬間に「これは自分の仕事でどう使えるか」まで落とすこと。</p>
+          <p>表ではGPT卿がやさしく語り、裏ではCodex卿がサイト、記事、テンプレ、検証、会員導線を作る。殿は方向を決める。実装はCodexで進む。</p>
+          <div class="actions">
+            <a class="btn primary" href="news/2026-05-27-codex-official-roundup.md">初回記事を見る</a>
+            <a class="btn" href="social/launch_posts.md">初回投稿を見る</a>
+          </div>
+        </div>
+        <div class="tiers" aria-label="会員プラン仮説">
+          <article class="tier">
+            <h3>Free</h3>
+            <p>週次ニュースまとめ、初心者向けの今日の一手。</p>
+          </article>
+          <article class="tier">
+            <h3>Supporter</h3>
+            <p>X投稿テンプレ、記事テンプレ、プロンプト集。</p>
+          </article>
+          <article class="tier">
+            <h3>Builder</h3>
+            <p>Codex実装パック、LP雛形、自動化レシピ。</p>
+          </article>
+          <article class="tier">
+            <h3>Business</h3>
+            <p>法人向けAI導入、研修、Codex構築代行。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <span>Codex教はOpenAI公式ではない非公式日本語メディアです。</span>
+      <span>Sources: OpenAI official pages and OpenAI Help Center, checked on 2026-05-27.</span>
+    </div>
+  </footer>
+</body>
+</html>
